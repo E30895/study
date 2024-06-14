@@ -79,3 +79,56 @@ final['des_op_acumulado'] = final.apply(lambda row: row['des_op'] if not pd.isna
 
 # Salvar o dataframe final em um arquivo Excel
 final.to_excel('9_final_teste.xlsx', index=False)
+
+###
+
+import pandas as pd
+
+# Definir a formatação de exibição para floats
+pd.set_option('display.float_format', '{:.2f}'.format)
+
+# Carregar os dados dos arquivos Excel
+df_observados = pd.read_excel('dados.xlsx')
+df_projecoes = pd.read_excel('projecao.xlsx')
+
+# Combinar os dois dataframes baseando-se nas colunas 'anomes' e 'ag'
+df_merged = pd.merge(df_projecoes, df_observados, on=['anomes', 'ag'], how='left', suffixes=('_proj', '_obs'))
+
+# Criar um dataframe final com as colunas desejadas
+final = pd.DataFrame()
+final[['anomes', 'ag', 'Ano', 'Mês', 'COOP']] = df_merged[['anomes', 'ag', 'Ano', 'Mês', 'COOP']]
+
+# Sobrepor os valores observados sobre as projeções onde houver dados observados
+final['rec_op'] = df_merged['rec_op_obs'].combine_first(df_merged['rec_op_proj'])
+final['des_op'] = df_merged['des_op_obs'].combine_first(df_merged['des_op_proj'])
+final['sob_liq'] = df_merged['sob_liq_obs'].combine_first(df_merged['sob_liq_proj'])
+final['pr_liq'] = df_merged['pr_liq_obs'].combine_first(df_merged['pr_liq_proj'])
+final['ind_liq'] = df_merged['ind_liq_obs'].combine_first(df_merged['ind_liq_proj'])
+final['mg_rwa'] = df_merged['mg_rwa_obs'].combine_first(df_merged['mg_rwa_proj'])
+final['roe'] = df_merged['roe_obs'].combine_first(df_merged['roe_proj'])
+
+# Criar a coluna 'semestre' baseando-se na coluna 'anomes'
+final['semestre'] = final['anomes'].map(lambda x: str(x).replace("2024", ""))
+final['semestre'] = pd.to_numeric(final['semestre'])
+final['semestre'] = ((final['semestre'] - 1) // 6) + 1
+
+# Função para calcular a soma acumulada respeitando a lógica dos observados e projetados
+def calcular_acumulado(grupo):
+    grupo = grupo.sort_values('anomes')
+    grupo['rec_op_acumulado'] = 0.0
+    grupo['des_op_acumulado'] = 0.0
+    for i in range(len(grupo)):
+        if i == 0:
+            grupo['rec_op_acumulado'].iloc[i] = grupo['rec_op'].iloc[i]
+            grupo['des_op_acumulado'].iloc[i] = grupo['des_op'].iloc[i]
+        else:
+            grupo['rec_op_acumulado'].iloc[i] = grupo['rec_op'].iloc[i] + grupo['rec_op_acumulado'].iloc[i-1]
+            grupo['des_op_acumulado'].iloc[i] = grupo['des_op'].iloc[i] + grupo['des_op_acumulado'].iloc[i-1]
+    return grupo
+
+# Aplicar a função de cálculo acumulado por grupo de semestre e ag
+final = final.groupby(['semestre', 'ag']).apply(calcular_acumulado).reset_index(drop=True)
+
+# Salvar o dataframe final em um arquivo Excel
+final.to_excel('9_final_teste.xlsx', index=False)
+
