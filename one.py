@@ -2,8 +2,8 @@ import pandas as pd
 
 pd.set_option('display.float_format', '{:.2f}'.format)
 
-df_observados = pd.read_excel('1_Dados_202404.xlsx')
-df_projecoes = pd.read_excel('1_Projecoes_tesouraria.xlsx')
+df_observados = pd.read_excel('dados.xlsx')
+df_projecoes = pd.read_excel('projecao.xlsx')
 
 df_merged = pd.merge(df_projecoes, df_observados, on=['anomes','ag'], how='left', suffixes=('_proj', '_obs'))
 
